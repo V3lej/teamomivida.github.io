@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego para el imicin c:</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: skyblue;
+        }
+        canvas {
+            background-color: lightgreen;
+            display: block;
+            margin: auto;
+            border: 2px solid black;
+        }
+        .messageScreen {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px black;
+        }
+    </style>
+</head>
+<body>
+    <h1>Juego para mi imi</h1>
+    <p>Puntuación: <span id="score">0</span></p>
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+    
+    <div id="startScreen" class="messageScreen" style="display: block;">
+        <h2>Bienvenida a tu juego, mi amor lindo ❤️</h2>
+        <button onclick="startGame()">Iniciar</button>
+    </div>
+
+    <div id="gameOverScreen" class="messageScreen">
+        <h2>PERDISTE MI AMOOOOOOR :CCCC</h2>
+        <p>Puntuación: <span id="finalScore">0</span></p>
+        <p>Máximos puntos: <span id="highScore">0</span></p>
+        <button onclick="restartGame()">Volver a jugar</button>
+    </div>
+
+    <div id="winScreen" class="messageScreen">
+        <h2>ERES LA MEJOR MI VIDAAAAAAAAAA LLEGASTE A 30 TE AMOOOO</h2>
+        <p>Ahora vas a ver la sorpresa 🙊</p>
+        <button onclick="showCustomMessage()">Continuar</button>
+    </div>
+
+    <div id="customMessageScreen" class="messageScreen">
+        <h2>Feliz día de la mujer 💜❤</h2>
+        <p>Mi vida te queria decir que te deseo feliz de de la mujer recuerda que eres la mujer mas hermosa de este mundo siempre recuerda que te eres muy linda que todo lo que te pones te queda bien que eres alguien muy inteligente y genial, te queria dar las gracias por todo lo que hemos pasado juntitos muchas gracias por darme tanta felicidad y darme tantas alegrias en serio que tu eres mi niña mi mujer y eres muy especial para mi, espero que en este momento que estas enojadita poder hacerte feliz y poder sacarte una sonrisa espero que te haya gustado el jueguito y que no se te haya hecho muy estresante recuerda que lo hice con mucho amor y lo puedes jugar cuantas veces quieras mi amor,recuerda que siempre estare para ti mi vida bien pepucie,yo te tengo un mini regalito del dia de la mujer que te lo dare cuando nos veamos lo hice con mucho amor y espero te guste, te amo mucho mi vida yo se que a veces cometo errores bien feos y tontos pero recuerda que soy un imi que se puede equivocar te amo mucho muchas gracias por darme momentos tan felices te amo y espero que hayas tenido un feliz dia de la mujer mi princesa 💜</p>
+        <button onclick="restartGame()">Volver a jugar</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+        const startScreen = document.getElementById("startScreen");
+        const gameOverScreen = document.getElementById("gameOverScreen");
+        const finalScoreElement = document.getElementById("finalScore");
+        const highScoreElement = document.getElementById("highScore");
+        const winScreen = document.getElementById("winScreen");
+        const customMessageScreen = document.getElementById("customMessageScreen");
+
+        // Cargar imagen del personaje
+        let playerImg = new Image();
+        playerImg.src = "corazon_moradito.png"; 
+        let imageLoaded = false;
+
+        playerImg.onload = function() {
+            imageLoaded = true;
+        };
+
+        let player = {
+            x: 50,
+            y: 250,
+            width: 40,
+            height: 40,
+            velocityY: 0,
+            gravity: 0.3,
+            jump: -6
+        };
+
+        let pipes = [];
+        let pipeWidth = 50;
+        let pipeGap = 160;
+        let pipeSpeed = 2;
+        let score = 0;
+        let highScore = 0;
+        let gameRunning = false;
+
+        function drawPlayer() {
+            if (imageLoaded) {
+                ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+            } else {
+                ctx.fillStyle = "red";
+                ctx.fillRect(player.x, player.y, player.width, player.height);
+            }
+        }
+
+        function drawPipes() {
+            ctx.fillStyle = "green";
+            pipes.forEach(pipe => {
+                ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
+                ctx.fillRect(pipe.x, pipe.bottom, pipeWidth, canvas.height - pipe.bottom);
+            });
+        }
+
+        function updatePipes() {
+            if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 200) {
+                let topHeight = Math.random() * (canvas.height / 2);
+                pipes.push({
+                    x: canvas.width,
+                    top: topHeight,
+                    bottom: topHeight + pipeGap
+                });
+            }
+            pipes.forEach(pipe => pipe.x -= pipeSpeed);
+            pipes = pipes.filter(pipe => pipe.x + pipeWidth > 0);
+        }
+
+        function checkCollision() {
+            for (let pipe of pipes) {
+                if (
+                    player.x < pipe.x + pipeWidth &&
+                    player.x + player.width > pipe.x &&
+                    (player.y < pipe.top || player.y + player.height > pipe.bottom)
+                ) {
+                    endGame();
+                }
+            }
+            if (player.y + player.height > canvas.height) {
+                endGame();
+            }
+        }
+
+        function updateScore() {
+            pipes.forEach(pipe => {
+                if (!pipe.passed && player.x > pipe.x + pipeWidth) {
+                    score++;
+                    pipe.passed = true;
+                    scoreElement.textContent = score;
+                    if (score === 30) {
+                        winGame();
+                    }
+                }
+            });
+        }
+
+        function updateGame() {
+            if (!gameRunning) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            player.velocityY += player.gravity;
+            player.y += player.velocityY;
+            updatePipes();
+            checkCollision();
+            updateScore();
+            drawPipes();
+            drawPlayer();
+            requestAnimationFrame(updateGame);
+        }
+
+        function jump() {
+            if (!gameRunning) return;
+            player.velocityY = player.jump;
+        }
+
+        function startGame() {
+            startScreen.style.display = "none";
+            gameRunning = true;
+            updateGame();
+        }
+
+        function endGame() {
+            gameRunning = false;
+            gameOverScreen.style.display = "block";
+            finalScoreElement.textContent = score;
+            if (score > highScore) {
+                highScore = score;
+                highScoreElement.textContent = highScore;
+            }
+        }
+
+        function winGame() {
+            gameRunning = false;
+            winScreen.style.display = "block";
+        }
+
+        function showCustomMessage() {
+            winScreen.style.display = "none";
+            customMessageScreen.style.display = "block";
+        }
+
+        function restartGame() {
+            player.y = 250;
+            player.velocityY = 0;
+            pipes = [];
+            score = 0;
+            scoreElement.textContent = score;
+            gameOverScreen.style.display = "none";
+            winScreen.style.display = "none";
+            customMessageScreen.style.display = "none";
+            startScreen.style.display = "block";
+            gameRunning = false;
+        }
+
+        document.addEventListener("keydown", function(event) {
+            if (event.code === "Space") jump();
+        });
+
+        canvas.addEventListener("click", jump);
+    </script>
+</body>
+</html>
